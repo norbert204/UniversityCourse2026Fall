@@ -1,4 +1,5 @@
-﻿using StudentApi.Models;
+﻿using StudentApi.Contracts;
+using StudentApi.Models;
 
 namespace StudentApi.Services
 {
@@ -6,12 +7,12 @@ namespace StudentApi.Services
     {
         List<Student> GetStudents();
 
-        void AddStudent(Student student);
+        Guid AddStudent(Student student);
 
-        void DeleteStudent(string neptunCode);
+        void DeleteStudent(Guid neptunCode);
 
-        void UpdateStudent(string neptunCode, Student student);
+        void UpdateStudent(Guid neptunCode, Student student);
 
-        Student GetStudent(string neptunCode);
+        Student GetStudent(Guid neptunCode);
     }
 }

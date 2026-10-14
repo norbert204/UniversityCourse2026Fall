@@ -1,4 +1,5 @@
-﻿using StudentApi.Models;
+﻿using StudentApi.Exceptions;
+using StudentApi.Models;
 
 namespace StudentApi.Services
 {
@@ -11,24 +12,30 @@ namespace StudentApi.Services
             _students = [];
         }
 
-        public void AddStudent(Student student)
+        public Guid AddStudent(Student student)
         {
-            if (_students.Any(x => x.NeptunCode == student.NeptunCode))
-            {
-                throw new InvalidOperationException($"Student with Neptun Code '{student.NeptunCode}' already exists");
-            }
+            var neptunCode = Guid.CreateVersion7();
+
+            student.NeptunCode = neptunCode;
 
             _students.Add(student);
+
+            return neptunCode;
         }
 
-        public void DeleteStudent(string neptunCode)
+        public void DeleteStudent(Guid neptunCode)
         {
             var studentToDelete = _students.FirstOrDefault(x => x.NeptunCode == neptunCode);
+
+            if (studentToDelete is null)
+            {
+                throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' already exists");
+            }
 
             _students.Remove(studentToDelete);
         }
 
-        public Student GetStudent(string neptunCode)
+        public Student GetStudent(Guid neptunCode)
         {
             return _students.FirstOrDefault(x => x.NeptunCode == neptunCode);
         }
@@ -38,14 +45,16 @@ namespace StudentApi.Services
             return _students;
         }
 
-        public void UpdateStudent(string neptunCode, Student student)
+        public void UpdateStudent(Guid neptunCode, Student student)
         {
-            if (neptunCode != student.NeptunCode)
+            var studentToUpdate = _students.FindIndex(x => x.NeptunCode == neptunCode);
+
+            if (studentToUpdate < 0)
             {
-                throw new InvalidOperationException($"Neptun Code provided in URI is not the same as in the Body");
+                throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' already exists");
             }
 
-            var studentToUpdate = _students.FindIndex(x => x.NeptunCode == neptunCode);
+            student.NeptunCode = neptunCode;
 
             _students[studentToUpdate] = student;
         }

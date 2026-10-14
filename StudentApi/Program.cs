@@ -1,26 +1,21 @@
+using Serilog;
 using StudentApi;
 using StudentApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-// Modified from `main`
-// Hello from Test branch
+builder.Services.AddSerilog(options => options
+    .MinimumLevel.Information()
+    .WriteTo.File("logs/log.txt")
+    .WriteTo.Console());
 
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddSingleton<IStudentRepository, StudentRepository>();
-}
-else
-{
-    builder.Services.AddSingleton<IStudentRepository, OracleStudentRepository>();
-}
+builder.Services.AddSingleton<IStudentRepository, StudentRepository>();
+
 builder.Services.AddTransient<RandomService>();
 
 var app = builder.Build();
@@ -35,6 +30,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseAuthorization();
+
+app.UseExceptionHandler("/error");
 
 app.MapControllers();
 
