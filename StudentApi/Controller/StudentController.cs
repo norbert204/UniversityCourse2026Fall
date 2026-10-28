@@ -22,13 +22,13 @@ namespace StudentApi.Controller
 
 
         [HttpGet]
-        public ActionResult<GetStudentsResponse> GetStudents()
+        public async Task<ActionResult<GetStudentsResponse>> GetStudents()
         {
             _logger.LogInformation("Get Students request received");
-
+            var students = await _studentRepository.GetStudentsAsync();
             var response = new GetStudentsResponse
             {
-                Students = _studentRepository.GetStudents().ToDto(),
+                Students = students.ToDto(),
             };
 
             _logger.LogInformation("Get students request succeeded with response {@Response}", response);
@@ -37,11 +37,11 @@ namespace StudentApi.Controller
         }
 
         [HttpPost]
-        public ActionResult<AddStudentResponse> AddStudent(AddStudentRequest request)
+        public async Task<ActionResult<AddStudentResponse>> AddStudent(AddStudentRequest request)
         {
             _logger.LogInformation("Add Student request received: {@Request}", request);
 
-            var neptunCode = _studentRepository.AddStudent(request.ToStudentEntity());
+            var neptunCode = await _studentRepository.AddStudentAsync(request.ToStudentEntity());
 
             var response = new AddStudentResponse
             {
@@ -54,23 +54,23 @@ namespace StudentApi.Controller
         }
 
         [HttpDelete("{neptunCode}")]
-        public ActionResult DeleteStudent(Guid neptunCode)
+        public async Task<ActionResult> DeleteStudent(Guid neptunCode)
         {
-            _studentRepository.DeleteStudent(neptunCode);
+            await _studentRepository.DeleteStudentAsync(neptunCode);
             return NoContent();
         }
 
         [HttpPut("{neptunCode}")]
-        public ActionResult UpdateStudent(Guid neptunCode, [FromBody] UpdateStudentRequest request)
+        public async Task<ActionResult> UpdateStudent(Guid neptunCode, [FromBody] UpdateStudentRequest request)
         {
-            _studentRepository.UpdateStudent(neptunCode, request.ToStudentEntity());
+            await _studentRepository.UpdateStudentAsync(neptunCode, request.ToStudentEntity());
             return NoContent();
         }
 
         [HttpGet("{neptunCode}")]
-        public ActionResult<GetStudentResponse> GetStudent(Guid neptunCode)
+        public async Task<ActionResult<GetStudentResponse>> GetStudent(Guid neptunCode)
         {
-            var student = _studentRepository.GetStudent(neptunCode);
+            var student = await _studentRepository.GetStudentAsync(neptunCode);
 
             if (student is not null)
             {

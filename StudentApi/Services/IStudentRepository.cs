@@ -5,14 +5,14 @@ namespace StudentApi.Services
 {
     public interface IStudentRepository
     {
-        List<Student> GetStudents();
+        Task<List<Student>> GetStudentsAsync();
 
-        Guid AddStudent(Student student);
+        Task<Guid> AddStudentAsync(Student student);
 
-        void DeleteStudent(Guid neptunCode);
+        Task DeleteStudentAsync(Guid neptunCode);
 
-        void UpdateStudent(Guid neptunCode, Student student);
+        Task UpdateStudentAsync(Guid neptunCode, Student student);
 
-        Student GetStudent(Guid neptunCode);
+        Task<Student> GetStudentAsync(Guid neptunCode);
     }
 }

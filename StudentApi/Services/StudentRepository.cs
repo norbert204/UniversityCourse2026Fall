@@ -1,62 +1,67 @@
-﻿using StudentApi.Exceptions;
+﻿using Microsoft.EntityFrameworkCore;
+using StudentApi.Exceptions;
 using StudentApi.Models;
+using System.Runtime.InteropServices;
 
 namespace StudentApi.Services
 {
     public class StudentRepository : IStudentRepository
     {
-        private readonly List<Student> _students;
+        private readonly AppDbContext _appDbContext;
 
-        public StudentRepository()
+        public StudentRepository(AppDbContext appDbContext)
         {
-            _students = [];
+            _appDbContext = appDbContext;
         }
 
-        public Guid AddStudent(Student student)
+        public async Task<Guid> AddStudentAsync(Student student)
         {
             var neptunCode = Guid.CreateVersion7();
 
             student.NeptunCode = neptunCode;
 
-            _students.Add(student);
-
+            _appDbContext.Add(student);
+            await _appDbContext.SaveChangesAsync();
             return neptunCode;
         }
 
-        public void DeleteStudent(Guid neptunCode)
+        public async Task DeleteStudentAsync(Guid neptunCode)
         {
-            var studentToDelete = _students.FirstOrDefault(x => x.NeptunCode == neptunCode);
+            var studentToDelete = _appDbContext.Students.FirstOrDefault(x => x.NeptunCode == neptunCode);
 
             if (studentToDelete is null)
             {
                 throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' already exists");
             }
 
-            _students.Remove(studentToDelete);
+            _appDbContext.Remove(studentToDelete);
+            await _appDbContext.SaveChangesAsync();
         }
 
-        public Student GetStudent(Guid neptunCode)
+        public async Task<Student> GetStudentAsync(Guid neptunCode)
         {
-            return _students.FirstOrDefault(x => x.NeptunCode == neptunCode);
+            return await _appDbContext.Students.AsNoTracking().FirstOrDefaultAsync(x => x.NeptunCode == neptunCode);
         }
 
-        public List<Student> GetStudents()
+        public async Task<List<Student>> GetStudentsAsync()
         {
-            return _students;
+            return await _appDbContext.Students.AsNoTracking().ToListAsync();
         }
 
-        public void UpdateStudent(Guid neptunCode, Student student)
+        public async Task UpdateStudentAsync(Guid neptunCode, Student student)
         {
-            var studentToUpdate = _students.FindIndex(x => x.NeptunCode == neptunCode);
+            var studentToUpdate = await _appDbContext.Students.FirstOrDefaultAsync(x => x.NeptunCode == neptunCode);
 
-            if (studentToUpdate < 0)
+            if (studentToUpdate is null)
             {
                 throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' already exists");
             }
 
-            student.NeptunCode = neptunCode;
+            studentToUpdate.Name = student.Name;
+            studentToUpdate.BirthDate = student.BirthDate;
+            studentToUpdate.EmailAddress = student.EmailAddress;
 
-            _students[studentToUpdate] = student;
+            await _appDbContext.SaveChangesAsync();
         }
     }
 }
