@@ -28,10 +28,11 @@ namespace StudentApi.Tests.Services
             var studentRepository = nullLessonRepository ? _mockedStudentRepository : null;
 
             // Act
-            var exception = Assert.Throws<ArgumentNullException>(
+            var caughtException = Record.Exception(
                 () => new LessonService(lessonRepository!, studentRepository!));
 
             // Assert
+            var exception = Assert.IsType<ArgumentNullException>(caughtException);
             Assert.Equal(parameterName, exception.ParamName);
         }
 
@@ -42,10 +43,11 @@ namespace StudentApi.Tests.Services
             var lessonId = Guid.Empty;
 
             // Act
-            var exception = await Assert.ThrowsAsync<ArgumentException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.GetLessonAsync(lessonId));
 
             // Assert
+            var exception = Assert.IsType<ArgumentException>(caughtException);
             Assert.Equal("lessonId", exception.ParamName);
             Assert.StartsWith("Lesson ID cannot be empty.", exception.Message);
             Assert.Empty(_mockedLessonRepository.ReceivedCalls());
@@ -59,10 +61,11 @@ namespace StudentApi.Tests.Services
             Lesson lesson = null!;
 
             // Act
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.AddLessonAsync(lesson));
 
             // Assert
+            var exception = Assert.IsType<ArgumentNullException>(caughtException);
             Assert.Equal("lesson", exception.ParamName);
             Assert.Empty(_mockedLessonRepository.ReceivedCalls());
             Assert.Empty(_mockedStudentRepository.ReceivedCalls());
@@ -75,10 +78,11 @@ namespace StudentApi.Tests.Services
             var lessonId = Guid.NewGuid();
 
             // Act
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.UpdateLessonAsync(lessonId, null!));
 
             // Assert
+            var exception = Assert.IsType<ArgumentNullException>(caughtException);
             Assert.Equal("lesson", exception.ParamName);
             Assert.Empty(_mockedLessonRepository.ReceivedCalls());
             Assert.Empty(_mockedStudentRepository.ReceivedCalls());
@@ -91,10 +95,11 @@ namespace StudentApi.Tests.Services
             var lessonId = Guid.NewGuid();
 
             // Act
-            var exception = await Assert.ThrowsAsync<ArgumentNullException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.AssignStudentsAsync(lessonId, null!));
 
             // Assert
+            var exception = Assert.IsType<ArgumentNullException>(caughtException);
             Assert.Equal("neptunCodes", exception.ParamName);
             Assert.Empty(_mockedLessonRepository.ReceivedCalls());
             Assert.Empty(_mockedStudentRepository.ReceivedCalls());
@@ -181,10 +186,11 @@ namespace StudentApi.Tests.Services
                 .Returns(new List<Student> { newStudent });
 
             // Act
-            var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.AssignStudentsAsync(lesson.Id, codes));
 
             // Assert
+            var exception = Assert.IsType<EntityNotFoundException>(caughtException);
             Assert.Equal("One or more students do not exist", exception.Message);
             Assert.Same(assignedStudent, Assert.Single(lesson.Students));
             await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
@@ -200,10 +206,11 @@ namespace StudentApi.Tests.Services
                 .Returns(Task.FromResult<Lesson>(null!));
 
             // Act
-            var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.AssignStudentsAsync(lessonId, codes));
 
             // Assert
+            var exception = Assert.IsType<EntityNotFoundException>(caughtException);
             Assert.Contains(lessonId.ToString(), exception.Message);
             await _mockedStudentRepository.DidNotReceive().GetStudentsByCodesAsync(Arg.Any<List<Guid>>());
             await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
@@ -235,10 +242,11 @@ namespace StudentApi.Tests.Services
             _mockedLessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
 
             // Act
-            var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
+            var caughtException = await Record.ExceptionAsync(
                 () => _service.RemoveStudentAsync(lesson.Id, Guid.NewGuid()));
 
             // Assert
+            var exception = Assert.IsType<EntityNotFoundException>(caughtException);
             Assert.Equal("Student is not assigned to this lesson", exception.Message);
             Assert.Same(assignedStudent, Assert.Single(lesson.Students));
             await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
