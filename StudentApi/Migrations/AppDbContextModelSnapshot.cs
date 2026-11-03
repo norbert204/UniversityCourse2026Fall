@@ -17,6 +17,29 @@ namespace StudentApi.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
+            modelBuilder.Entity("StudentApi.Models.Lesson", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Room")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("StartsAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Lessons");
+                });
+
             modelBuilder.Entity("StudentApi.Models.Student", b =>
                 {
                     b.Property<Guid>("NeptunCode")
@@ -35,6 +58,36 @@ namespace StudentApi.Migrations
                     b.HasKey("NeptunCode");
 
                     b.ToTable("Students");
+                });
+
+            modelBuilder.Entity("StudentLessons", b =>
+                {
+                    b.Property<Guid>("LessonsId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("StudentsNeptunCode")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("LessonsId", "StudentsNeptunCode");
+
+                    b.HasIndex("StudentsNeptunCode");
+
+                    b.ToTable("StudentLessons");
+                });
+
+            modelBuilder.Entity("StudentLessons", b =>
+                {
+                    b.HasOne("StudentApi.Models.Lesson", null)
+                        .WithMany()
+                        .HasForeignKey("LessonsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudentApi.Models.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentsNeptunCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using StudentApi.Contracts;
 using StudentApi.Mappers;
-using StudentApi.Models;
 using StudentApi.Services;
-using System.Net;
 
 namespace StudentApi.Controller
 {
@@ -12,12 +10,15 @@ namespace StudentApi.Controller
     public class StudentController : ControllerBase
     {
         private readonly ILogger<StudentController> _logger;
-        private readonly IStudentRepository _studentRepository;
+        private readonly IStudentService _studentService;
+        private readonly ILessonService _lessonService;
 
-        public StudentController(ILogger<StudentController> logger, IStudentRepository studentRepository)
+        public StudentController(ILogger<StudentController> logger, IStudentService studentService,
+            ILessonService lessonService)
         {
             _logger = logger;
-            _studentRepository = studentRepository;
+            _studentService = studentService;
+            _lessonService = lessonService;
         }
 
 
@@ -25,7 +26,7 @@ namespace StudentApi.Controller
         public async Task<ActionResult<GetStudentsResponse>> GetStudents()
         {
             _logger.LogInformation("Get Students request received");
-            var students = await _studentRepository.GetStudentsAsync();
+            var students = await _studentService.GetStudentsAsync();
             var response = new GetStudentsResponse
             {
                 Students = students.ToDto(),
@@ -41,7 +42,7 @@ namespace StudentApi.Controller
         {
             _logger.LogInformation("Add Student request received: {@Request}", request);
 
-            var neptunCode = await _studentRepository.AddStudentAsync(request.ToStudentEntity());
+            var neptunCode = await _studentService.AddStudentAsync(request.ToStudentEntity());
 
             var response = new AddStudentResponse
             {
@@ -56,21 +57,28 @@ namespace StudentApi.Controller
         [HttpDelete("{neptunCode}")]
         public async Task<ActionResult> DeleteStudent(Guid neptunCode)
         {
-            await _studentRepository.DeleteStudentAsync(neptunCode);
+            await _studentService.DeleteStudentAsync(neptunCode);
             return NoContent();
         }
 
         [HttpPut("{neptunCode}")]
         public async Task<ActionResult> UpdateStudent(Guid neptunCode, [FromBody] UpdateStudentRequest request)
         {
-            await _studentRepository.UpdateStudentAsync(neptunCode, request.ToStudentEntity());
+            await _studentService.UpdateStudentAsync(neptunCode, request.ToStudentEntity());
             return NoContent();
+        }
+
+        [HttpGet("{neptunCode}/lessons")]
+        public async Task<ActionResult<GetLessonsResponse>> GetStudentLessons(Guid neptunCode)
+        {
+            var lessons = await _lessonService.GetStudentLessonsAsync(neptunCode);
+            return Ok(new GetLessonsResponse { Lessons = lessons.ToDto() });
         }
 
         [HttpGet("{neptunCode}")]
         public async Task<ActionResult<GetStudentResponse>> GetStudent(Guid neptunCode)
         {
-            var student = await _studentRepository.GetStudentAsync(neptunCode);
+            var student = await _studentService.GetStudentAsync(neptunCode);
 
             if (student is not null)
             {

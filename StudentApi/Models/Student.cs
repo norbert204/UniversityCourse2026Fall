@@ -9,5 +9,7 @@
         public DateOnly BirthDate { get; set; }
 
         public string EmailAddress { get; set; }
+
+        public List<Lesson> Lessons { get; set; } = new();
     }
 }
