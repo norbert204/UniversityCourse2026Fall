@@ -11,6 +11,16 @@ namespace StudentApi.Services
 
         public LessonService(ILessonRepository lessonRepository, IStudentRepository studentRepository)
         {
+            if (lessonRepository is null)
+            {
+                throw new ArgumentNullException(nameof(lessonRepository));
+            }
+
+            if (studentRepository is null)
+            {
+                throw new ArgumentNullException(nameof(studentRepository));
+            }
+
             _lessonRepository = lessonRepository;
             _studentRepository = studentRepository;
         }
@@ -22,11 +32,21 @@ namespace StudentApi.Services
 
         public Task<Lesson> GetLessonAsync(Guid lessonId)
         {
+            if (lessonId == Guid.Empty)
+            {
+                throw new ArgumentException("Lesson ID cannot be empty.", nameof(lessonId));
+            }
+
             return _lessonRepository.GetLessonAsync(lessonId);
         }
 
         public async Task<Guid> AddLessonAsync(Lesson lesson)
         {
+            if (lesson is null)
+            {
+                throw new ArgumentNullException(nameof(lesson));
+            }
+
             lesson.Id = Guid.CreateVersion7();
             _lessonRepository.AddLesson(lesson);
             await _lessonRepository.SaveChangesAsync();
@@ -35,6 +55,11 @@ namespace StudentApi.Services
 
         public async Task UpdateLessonAsync(Guid lessonId, Lesson lesson)
         {
+            if (lesson is null)
+            {
+                throw new ArgumentNullException(nameof(lesson));
+            }
+
             var lessonToUpdate = await GetRequiredLessonAsync(lessonId);
             lessonToUpdate.Name = lesson.Name;
             lessonToUpdate.Room = lesson.Room;
@@ -52,6 +77,11 @@ namespace StudentApi.Services
 
         public async Task<List<Guid>> AssignStudentsAsync(Guid lessonId, List<Guid> neptunCodes)
         {
+            if (neptunCodes is null)
+            {
+                throw new ArgumentNullException(nameof(neptunCodes));
+            }
+
             var lesson = await GetRequiredLessonWithStudentsAsync(lessonId);
             var distinctCodes = neptunCodes.Distinct().ToList();
             var students = await _studentRepository.GetStudentsByCodesAsync(distinctCodes);
@@ -103,14 +133,24 @@ namespace StudentApi.Services
 
         private async Task<Lesson> GetRequiredLessonAsync(Guid lessonId)
         {
-            return await _lessonRepository.GetLessonAsync(lessonId)
-                ?? throw new EntityNotFoundException($"Lesson with Id '{lessonId}' does not exist");
+            var lesson = await _lessonRepository.GetLessonAsync(lessonId);
+            if (lesson is null)
+            {
+                throw new EntityNotFoundException($"Lesson with Id '{lessonId}' does not exist");
+            }
+
+            return lesson;
         }
 
         private async Task<Lesson> GetRequiredLessonWithStudentsAsync(Guid lessonId)
         {
-            return await _lessonRepository.GetLessonWithStudentsAsync(lessonId)
-                ?? throw new EntityNotFoundException($"Lesson with Id '{lessonId}' does not exist");
+            var lesson = await _lessonRepository.GetLessonWithStudentsAsync(lessonId);
+            if (lesson is null)
+            {
+                throw new EntityNotFoundException($"Lesson with Id '{lessonId}' does not exist");
+            }
+
+            return lesson;
         }
     }
 }

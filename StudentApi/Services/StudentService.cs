@@ -10,6 +10,11 @@ namespace StudentApi.Services
 
         public StudentService(IStudentRepository studentRepository)
         {
+            if (studentRepository is null)
+            {
+                throw new ArgumentNullException(nameof(studentRepository));
+            }
+
             _studentRepository = studentRepository;
         }
 
@@ -25,6 +30,11 @@ namespace StudentApi.Services
 
         public async Task<Guid> AddStudentAsync(Student student)
         {
+            if (student is null)
+            {
+                throw new ArgumentNullException(nameof(student));
+            }
+
             student.NeptunCode = Guid.CreateVersion7();
             _studentRepository.AddStudent(student);
             await _studentRepository.SaveChangesAsync();
@@ -33,6 +43,11 @@ namespace StudentApi.Services
 
         public async Task UpdateStudentAsync(Guid neptunCode, Student student)
         {
+            if (student is null)
+            {
+                throw new ArgumentNullException(nameof(student));
+            }
+
             var studentToUpdate = await GetRequiredStudentAsync(neptunCode);
             studentToUpdate.Name = student.Name;
             studentToUpdate.BirthDate = student.BirthDate;
@@ -49,8 +64,13 @@ namespace StudentApi.Services
 
         private async Task<Student> GetRequiredStudentAsync(Guid neptunCode)
         {
-            return await _studentRepository.GetStudentAsync(neptunCode)
-                ?? throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' does not exist");
+            var student = await _studentRepository.GetStudentAsync(neptunCode);
+            if (student is null)
+            {
+                throw new EntityNotFoundException($"Student with Neptun Code '{neptunCode}' does not exist");
+            }
+
+            return student;
         }
     }
 }
