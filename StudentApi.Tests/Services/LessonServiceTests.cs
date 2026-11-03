@@ -9,13 +9,13 @@ namespace StudentApi.Tests.Services
 {
     public class LessonServiceTests
     {
-        private readonly ILessonRepository _lessonRepository = Substitute.For<ILessonRepository>();
-        private readonly IStudentRepository _studentRepository = Substitute.For<IStudentRepository>();
+        private readonly ILessonRepository _mockedLessonRepository = Substitute.For<ILessonRepository>();
+        private readonly IStudentRepository _mockedStudentRepository = Substitute.For<IStudentRepository>();
         private readonly LessonService _service;
 
         public LessonServiceTests()
         {
-            _service = new LessonService(_lessonRepository, _studentRepository);
+            _service = new LessonService(_mockedLessonRepository, _mockedStudentRepository);
         }
 
         [Theory]
@@ -24,8 +24,8 @@ namespace StudentApi.Tests.Services
         public void NullRepository_CreateLessonService_ThrowsArgumentNullException(bool nullLessonRepository, string parameterName)
         {
             // Arrange
-            var lessonRepository = nullLessonRepository ? null : _lessonRepository;
-            var studentRepository = nullLessonRepository ? _studentRepository : null;
+            var lessonRepository = nullLessonRepository ? null : _mockedLessonRepository;
+            var studentRepository = nullLessonRepository ? _mockedStudentRepository : null;
 
             // Act
             var exception = Assert.Throws<ArgumentNullException>(
@@ -48,8 +48,8 @@ namespace StudentApi.Tests.Services
             // Assert
             Assert.Equal("lessonId", exception.ParamName);
             Assert.StartsWith("Lesson ID cannot be empty.", exception.Message);
-            Assert.Empty(_lessonRepository.ReceivedCalls());
-            Assert.Empty(_studentRepository.ReceivedCalls());
+            Assert.Empty(_mockedLessonRepository.ReceivedCalls());
+            Assert.Empty(_mockedStudentRepository.ReceivedCalls());
         }
 
         [Fact]
@@ -64,8 +64,8 @@ namespace StudentApi.Tests.Services
 
             // Assert
             Assert.Equal("lesson", exception.ParamName);
-            Assert.Empty(_lessonRepository.ReceivedCalls());
-            Assert.Empty(_studentRepository.ReceivedCalls());
+            Assert.Empty(_mockedLessonRepository.ReceivedCalls());
+            Assert.Empty(_mockedStudentRepository.ReceivedCalls());
         }
 
         [Fact]
@@ -80,8 +80,8 @@ namespace StudentApi.Tests.Services
 
             // Assert
             Assert.Equal("lesson", exception.ParamName);
-            Assert.Empty(_lessonRepository.ReceivedCalls());
-            Assert.Empty(_studentRepository.ReceivedCalls());
+            Assert.Empty(_mockedLessonRepository.ReceivedCalls());
+            Assert.Empty(_mockedStudentRepository.ReceivedCalls());
         }
 
         [Fact]
@@ -96,8 +96,8 @@ namespace StudentApi.Tests.Services
 
             // Assert
             Assert.Equal("neptunCodes", exception.ParamName);
-            Assert.Empty(_lessonRepository.ReceivedCalls());
-            Assert.Empty(_studentRepository.ReceivedCalls());
+            Assert.Empty(_mockedLessonRepository.ReceivedCalls());
+            Assert.Empty(_mockedStudentRepository.ReceivedCalls());
         }
 
         [Fact]
@@ -112,8 +112,8 @@ namespace StudentApi.Tests.Services
             // Assert
             Assert.NotEqual(Guid.Empty, lessonId);
             Assert.Equal(lessonId, lesson.Id);
-            _lessonRepository.Received(1).AddLesson(lesson);
-            await _lessonRepository.Received(1).SaveChangesAsync();
+            _mockedLessonRepository.Received(1).AddLesson(lesson);
+            await _mockedLessonRepository.Received(1).SaveChangesAsync();
         }
 
         [Fact]
@@ -128,7 +128,7 @@ namespace StudentApi.Tests.Services
                 StartsAt = new DateTime(2026, 11, 4, 10, 0, 0),
                 DurationMinutes = 90,
             };
-            _lessonRepository.GetLessonAsync(lesson.Id).Returns(lesson);
+            _mockedLessonRepository.GetLessonAsync(lesson.Id).Returns(lesson);
 
             // Act
             await _service.UpdateLessonAsync(lesson.Id, update);
@@ -138,7 +138,7 @@ namespace StudentApi.Tests.Services
             Assert.Equal(update.Room, lesson.Room);
             Assert.Equal(update.StartsAt, lesson.StartsAt);
             Assert.Equal(update.DurationMinutes, lesson.DurationMinutes);
-            await _lessonRepository.Received(1).SaveChangesAsync();
+            await _mockedLessonRepository.Received(1).SaveChangesAsync();
         }
 
         [Fact]
@@ -150,8 +150,8 @@ namespace StudentApi.Tests.Services
             var lesson = new Lesson { Id = Guid.NewGuid(), Students = new List<Student> { assignedStudent } };
             var codes = new List<Guid> { assignedStudent.NeptunCode, newStudent.NeptunCode, newStudent.NeptunCode };
             var distinctCodes = new[] { assignedStudent.NeptunCode, newStudent.NeptunCode };
-            _lessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
-            _studentRepository.GetStudentsByCodesAsync(
+            _mockedLessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
+            _mockedStudentRepository.GetStudentsByCodesAsync(
                 Arg.Is<List<Guid>>(requestedCodes => requestedCodes.SequenceEqual(distinctCodes)))
                 .Returns(new List<Student> { assignedStudent, newStudent });
 
@@ -163,9 +163,9 @@ namespace StudentApi.Tests.Services
             Assert.Equal(2, lesson.Students.Count);
             Assert.Contains(assignedStudent, lesson.Students);
             Assert.Contains(newStudent, lesson.Students);
-            await _studentRepository.Received(1).GetStudentsByCodesAsync(
+            await _mockedStudentRepository.Received(1).GetStudentsByCodesAsync(
                 Arg.Is<List<Guid>>(requestedCodes => requestedCodes.SequenceEqual(distinctCodes)));
-            await _lessonRepository.Received(1).SaveChangesAsync();
+            await _mockedLessonRepository.Received(1).SaveChangesAsync();
         }
 
         [Fact]
@@ -176,8 +176,8 @@ namespace StudentApi.Tests.Services
             var newStudent = new Student { NeptunCode = Guid.NewGuid() };
             var lesson = new Lesson { Id = Guid.NewGuid(), Students = new List<Student> { assignedStudent } };
             var codes = new List<Guid> { newStudent.NeptunCode, Guid.NewGuid() };
-            _lessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
-            _studentRepository.GetStudentsByCodesAsync(Arg.Any<List<Guid>>())
+            _mockedLessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
+            _mockedStudentRepository.GetStudentsByCodesAsync(Arg.Any<List<Guid>>())
                 .Returns(new List<Student> { newStudent });
 
             // Act
@@ -187,7 +187,7 @@ namespace StudentApi.Tests.Services
             // Assert
             Assert.Equal("One or more students do not exist", exception.Message);
             Assert.Same(assignedStudent, Assert.Single(lesson.Students));
-            await _lessonRepository.DidNotReceive().SaveChangesAsync();
+            await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
         }
 
         [Fact]
@@ -196,7 +196,7 @@ namespace StudentApi.Tests.Services
             // Arrange
             var lessonId = Guid.NewGuid();
             var codes = new List<Guid> { Guid.NewGuid() };
-            _lessonRepository.GetLessonWithStudentsAsync(lessonId)
+            _mockedLessonRepository.GetLessonWithStudentsAsync(lessonId)
                 .Returns(Task.FromResult<Lesson>(null!));
 
             // Act
@@ -205,8 +205,8 @@ namespace StudentApi.Tests.Services
 
             // Assert
             Assert.Contains(lessonId.ToString(), exception.Message);
-            await _studentRepository.DidNotReceive().GetStudentsByCodesAsync(Arg.Any<List<Guid>>());
-            await _lessonRepository.DidNotReceive().SaveChangesAsync();
+            await _mockedStudentRepository.DidNotReceive().GetStudentsByCodesAsync(Arg.Any<List<Guid>>());
+            await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
         }
 
         [Fact]
@@ -216,14 +216,14 @@ namespace StudentApi.Tests.Services
             var student = new Student { NeptunCode = Guid.NewGuid() };
             var otherStudent = new Student { NeptunCode = Guid.NewGuid() };
             var lesson = new Lesson { Id = Guid.NewGuid(), Students = new List<Student> { student, otherStudent } };
-            _lessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
+            _mockedLessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
 
             // Act
             await _service.RemoveStudentAsync(lesson.Id, student.NeptunCode);
 
             // Assert
             Assert.Same(otherStudent, Assert.Single(lesson.Students));
-            await _lessonRepository.Received(1).SaveChangesAsync();
+            await _mockedLessonRepository.Received(1).SaveChangesAsync();
         }
 
         [Fact]
@@ -232,7 +232,7 @@ namespace StudentApi.Tests.Services
             // Arrange
             var assignedStudent = new Student { NeptunCode = Guid.NewGuid() };
             var lesson = new Lesson { Id = Guid.NewGuid(), Students = new List<Student> { assignedStudent } };
-            _lessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
+            _mockedLessonRepository.GetLessonWithStudentsAsync(lesson.Id).Returns(lesson);
 
             // Act
             var exception = await Assert.ThrowsAsync<EntityNotFoundException>(
@@ -241,7 +241,7 @@ namespace StudentApi.Tests.Services
             // Assert
             Assert.Equal("Student is not assigned to this lesson", exception.Message);
             Assert.Same(assignedStudent, Assert.Single(lesson.Students));
-            await _lessonRepository.DidNotReceive().SaveChangesAsync();
+            await _mockedLessonRepository.DidNotReceive().SaveChangesAsync();
         }
     }
 }
