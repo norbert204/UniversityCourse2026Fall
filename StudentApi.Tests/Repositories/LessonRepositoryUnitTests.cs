@@ -6,13 +6,13 @@ using Xunit;
 
 namespace StudentApi.Tests.Repositories
 {
-    public class LessonRepositoryTests : IDisposable
+    public class LessonRepositoryUnitTests : IDisposable
     {
         private readonly SqliteConnection _connection;
         private readonly AppDbContext _context;
         private readonly LessonRepository _repository;
 
-        public LessonRepositoryTests()
+        public LessonRepositoryUnitTests()
         {
             _connection = new SqliteConnection("Data Source=:memory:");
             _connection.Open();

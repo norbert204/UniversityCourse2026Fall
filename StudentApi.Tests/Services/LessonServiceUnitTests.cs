@@ -7,13 +7,13 @@ using Xunit;
 
 namespace StudentApi.Tests.Services
 {
-    public class LessonServiceTests
+    public class LessonServiceUnitTests
     {
         private readonly ILessonRepository _mockedLessonRepository = Substitute.For<ILessonRepository>();
         private readonly IStudentRepository _mockedStudentRepository = Substitute.For<IStudentRepository>();
         private readonly LessonService _service;
 
-        public LessonServiceTests()
+        public LessonServiceUnitTests()
         {
             _service = new LessonService(_mockedLessonRepository, _mockedStudentRepository);
         }
