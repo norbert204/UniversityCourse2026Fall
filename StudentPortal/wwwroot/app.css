@@ -1,0 +1,131 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #f3f5f2;
+    color: #233536;
+    font-family: "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+.app {
+    width: min(100%, 960px);
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+h1,
+h2,
+h3 {
+    font-family: Georgia, serif;
+}
+
+h1 {
+    margin: 0;
+}
+
+.tabs,
+.form-grid,
+.field,
+.enrollment-form {
+    display: grid;
+    gap: 8px;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.form-grid {
+    margin-bottom: 12px;
+}
+
+.student-form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lesson-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field input,
+.enrollment-form select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+}
+
+button,
+.panel {
+    padding: 12px;
+}
+
+button {
+    border: 0;
+    background: #2e7065;
+    color: white;
+    cursor: pointer;
+}
+
+.panel {
+    border: 1px solid #dfe5df;
+    background: white;
+}
+
+.panel h2 {
+    margin-top: 0;
+}
+
+.error-message,
+.validation-message {
+    color: #a64e37;
+}
+
+.table-wrap {
+    margin-top: 16px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+th,
+td {
+    padding: 8px;
+    border-bottom: 1px solid #e6ebe6;
+}
+
+.enrollment {
+    margin-top: 20px;
+}
+
+@media (max-width: 640px) {
+    .student-form,
+    .lesson-form {
+        grid-template-columns: 1fr;
+    }
+
+    .app-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+    }
+}

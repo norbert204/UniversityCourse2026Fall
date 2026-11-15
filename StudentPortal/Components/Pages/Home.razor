@@ -1,0 +1,332 @@
+@page "/"
+@using System.ComponentModel.DataAnnotations
+@using StudentApi.Contracts
+@using StudentPortal.Services
+@inject RegistrarApiClient Api
+
+<PageTitle>Student Portal</PageTitle>
+
+<div class="app">
+    <header class="app-header">
+        <div>
+            <h1>Student Portal</h1>
+            <p>Students, lessons, and enrollment</p>
+        </div>
+        <span class="course-label">UNIVERSITY REGISTRY</span>
+    </header>
+
+    @if (_errorMessage is not null)
+    {
+        <p class="error-message" role="alert">@_errorMessage</p>
+    }
+
+    <nav class="tabs" aria-label="Portal sections">
+        <button type="button" class="@(_activeTab == "students" ? "active" : null)" @onclick="ShowStudents">Students</button>
+        <button type="button" class="@(_activeTab == "lessons" ? "active" : null)" @onclick="ShowLessons">Lessons</button>
+    </nav>
+
+    @if (_isLoading)
+    {
+        <p>Loading data...</p>
+    }
+    else if (_activeTab == "students")
+    {
+        <section class="panel">
+            <h2>Students</h2>
+
+            <EditForm Model="_studentDraft" OnValidSubmit="AddStudentAsync" FormName="student-form">
+                <DataAnnotationsValidator />
+                <div class="form-grid student-form">
+                    <label class="field">
+                        <span>Name</span>
+                        <InputText @bind-Value="_studentDraft.Name" />
+                        <ValidationMessage For="@(() => _studentDraft.Name)" />
+                    </label>
+                    <label class="field">
+                        <span>Email</span>
+                        <InputText @bind-Value="_studentDraft.EmailAddress" type="email" />
+                        <ValidationMessage For="@(() => _studentDraft.EmailAddress)" />
+                    </label>
+                    <label class="field">
+                        <span>Date of birth</span>
+                        <InputDate @bind-Value="_studentDraft.BirthDate" />
+                    </label>
+                </div>
+                <button type="submit">Add student</button>
+            </EditForm>
+
+            @if (_students.Count == 0)
+            {
+                <p>No students yet.</p>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Name</th><th>Neptun code</th><th>Email</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in _students)
+                            {
+                                <tr @key="student.NeptunCode">
+                                    <td>@student.Name</td>
+                                    <td>@student.NeptunCode.ToString("N")[..8].ToUpperInvariant()</td>
+                                    <td>@student.EmailAddress</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+    else
+    {
+        <section class="panel">
+            <h2>Lessons</h2>
+
+            <EditForm Model="_lessonDraft" OnValidSubmit="AddLessonAsync" FormName="lesson-form">
+                <DataAnnotationsValidator />
+                <div class="form-grid lesson-form">
+                    <label class="field">
+                        <span>Lesson name</span>
+                        <InputText @bind-Value="_lessonDraft.Name" />
+                        <ValidationMessage For="@(() => _lessonDraft.Name)" />
+                    </label>
+                    <label class="field">
+                        <span>Room</span>
+                        <InputText @bind-Value="_lessonDraft.Room" />
+                        <ValidationMessage For="@(() => _lessonDraft.Room)" />
+                    </label>
+                    <label class="field">
+                        <span>Starts at</span>
+                        <InputDate @bind-Value="_lessonDraft.StartsAt" Type="InputDateType.DateTimeLocal" />
+                    </label>
+                    <label class="field">
+                        <span>Duration in minutes</span>
+                        <InputNumber @bind-Value="_lessonDraft.DurationMinutes" min="1" max="1440" />
+                        <ValidationMessage For="@(() => _lessonDraft.DurationMinutes)" />
+                    </label>
+                </div>
+                <button type="submit">Add lesson</button>
+            </EditForm>
+
+            @if (_lessons.Count == 0)
+            {
+                <p>No lessons yet.</p>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr><th>Lesson</th><th>Room</th><th>Starts</th><th></th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var lesson in _lessons)
+                            {
+                                <tr @key="lesson.Id">
+                                    <td>@lesson.Name</td>
+                                    <td>@lesson.Room</td>
+                                    <td>@lesson.StartsAt.ToString("g")</td>
+                                    <td><button type="button" class="link-button" @onclick="() => SelectLessonAsync(lesson.Id)">Select</button></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            @if (SelectedLesson is not null)
+            {
+                <div class="enrollment">
+                    <h3>@SelectedLesson.Name roster</h3>
+                    <div class="enrollment-form">
+                        <InputSelect @bind-Value="_studentToEnroll">
+                            <option value="">Select a student</option>
+                            @foreach (var student in AvailableStudents)
+                            {
+                                <option value="@student.NeptunCode">@student.Name</option>
+                            }
+                        </InputSelect>
+                        <button type="button" @onclick="EnrollStudentAsync" disabled="@(_studentToEnroll is null)">Enroll</button>
+                    </div>
+
+                    @if (_enrolledStudents.Count == 0)
+                    {
+                        <p>No students enrolled.</p>
+                    }
+                    else
+                    {
+                        <ul>
+                            @foreach (var student in _enrolledStudents)
+                            {
+                                <li @key="student.NeptunCode">@student.Name</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<StudentDto> _students = [];
+    private IReadOnlyList<LessonDto> _lessons = [];
+    private IReadOnlyList<StudentDto> _enrolledStudents = [];
+    private StudentFormModel _studentDraft = new();
+    private LessonFormModel _lessonDraft = new();
+    private Guid? _selectedLessonId;
+    private Guid? _studentToEnroll;
+    private string _activeTab = "students";
+    private string? _errorMessage;
+    private bool _isLoading;
+
+    private LessonDto? SelectedLesson => _lessons.FirstOrDefault(lesson => lesson.Id == _selectedLessonId);
+
+    private IReadOnlyList<StudentDto> AvailableStudents => _students
+        .Where(student => _enrolledStudents.All(enrolled => enrolled.NeptunCode != student.NeptunCode))
+        .ToArray();
+
+    protected override Task OnInitializedAsync() => LoadDataAsync();
+
+    private async Task LoadDataAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _students = await Api.GetStudentsAsync();
+            _lessons = await Api.GetLessonsAsync();
+
+            if (_selectedLessonId is null && _lessons.FirstOrDefault() is { } firstLesson)
+            {
+                _selectedLessonId = firstLesson.Id;
+            }
+
+            if (_selectedLessonId is Guid lessonId && _lessons.Any(lesson => lesson.Id == lessonId))
+            {
+                _enrolledStudents = await Api.GetLessonStudentsAsync(lessonId);
+            }
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError(exception);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void ShowStudents() => _activeTab = "students";
+
+    private void ShowLessons() => _activeTab = "lessons";
+
+    private async Task AddStudentAsync()
+    {
+        try
+        {
+            await Api.AddStudentAsync(new AddStudentRequest
+            {
+                Name = _studentDraft.Name,
+                BirthDate = _studentDraft.BirthDate,
+                EmailAddress = _studentDraft.EmailAddress,
+            });
+            _studentDraft = new StudentFormModel();
+            await LoadDataAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError(exception);
+        }
+    }
+
+    private async Task AddLessonAsync()
+    {
+        try
+        {
+            _selectedLessonId = await Api.AddLessonAsync(new AddLessonRequest
+            {
+                Name = _lessonDraft.Name,
+                Room = _lessonDraft.Room,
+                StartsAt = _lessonDraft.StartsAt,
+                DurationMinutes = _lessonDraft.DurationMinutes,
+            });
+            _lessonDraft = new LessonFormModel();
+            await LoadDataAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError(exception);
+        }
+    }
+
+    private async Task SelectLessonAsync(Guid lessonId)
+    {
+        _selectedLessonId = lessonId;
+        _studentToEnroll = null;
+
+        try
+        {
+            _enrolledStudents = await Api.GetLessonStudentsAsync(lessonId);
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError(exception);
+        }
+    }
+
+    private async Task EnrollStudentAsync()
+    {
+        if (_selectedLessonId is not Guid lessonId || _studentToEnroll is not Guid neptunCode)
+        {
+            return;
+        }
+
+        try
+        {
+            await Api.AssignStudentAsync(lessonId, neptunCode);
+            _studentToEnroll = null;
+            await LoadDataAsync();
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError(exception);
+        }
+    }
+
+    private void ShowError(HttpRequestException exception)
+    {
+        _errorMessage = $"Could not reach the API at {Api.BaseAddress}. {exception.Message}";
+    }
+
+    private sealed class StudentFormModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string EmailAddress { get; set; } = string.Empty;
+
+        public DateOnly BirthDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddYears(-20));
+    }
+
+    private sealed class LessonFormModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string Room { get; set; } = string.Empty;
+
+        public DateTime StartsAt { get; set; } = DateTime.Now.Date.AddDays(7).AddHours(9);
+
+        [Range(1, 1440)]
+        public int DurationMinutes { get; set; } = 60;
+    }
+}
