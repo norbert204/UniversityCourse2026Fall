@@ -1,13 +1,14 @@
 @page "/lessons"
+@using System.Text.Json
 @inject RegistrationApiClient Api
 
 <PageTitle>Lessons</PageTitle>
 
 <h1>Lessons</h1>
 
-@if (_request.Error is not null)
+@if (_error is not null)
 {
-    <p role="alert">@_request.Error</p>
+    <p role="alert">@_error</p>
 }
 
 <h2>Add lesson</h2>
@@ -30,19 +31,19 @@
         <label for="lesson-duration">Duration in minutes</label>
         <InputNumber id="lesson-duration" class="form-control" @bind-Value="_lesson.DurationMinutes" />
     </div>
-    <button class="btn btn-primary" type="submit" disabled="@_request.IsBusy">Add lesson</button>
+    <button class="btn btn-primary" type="submit" disabled="@_isBusy">Add lesson</button>
 </EditForm>
 
 <h2 class="mt-4">Available lessons</h2>
 @if (_lessons is null)
 {
-    @if (_request.Error is null)
+    @if (_error is null)
     {
         <p>Loading lessons...</p>
     }
     else
     {
-        <button class="btn btn-primary" @onclick="LoadDataAsync" disabled="@_request.IsBusy">Try again</button>
+        <button class="btn btn-primary" @onclick="LoadDataAsync" disabled="@_isBusy">Try again</button>
     }
 }
 else if (_lessons.Count == 0)
@@ -62,7 +63,7 @@ else
                     <td>@item.Name</td>
                     <td>@item.Room</td>
                     <td>@item.StartsAt.ToString("g")</td>
-                    <td><button class="btn btn-secondary" @onclick="() => SelectLessonAsync(item)" disabled="@_request.IsBusy">Manage students</button></td>
+                    <td><button class="btn btn-secondary" @onclick="() => SelectLessonAsync(item)" disabled="@_isBusy">Manage students</button></td>
                 </tr>
             }
         </tbody>
@@ -83,7 +84,7 @@ else
     <label for="lesson-to-manage">Lesson</label>
     <select id="lesson-to-manage" class="form-select mb-3"
             value="@(SelectedLesson?.Id.ToString() ?? string.Empty)"
-            @onchange="ChangeLessonAsync" disabled="@_request.IsBusy">
+            @onchange="ChangeLessonAsync" disabled="@_isBusy">
         <option value="">Select a lesson</option>
         @foreach (var item in _lessons)
         {
@@ -97,13 +98,13 @@ else
     <h2>@SelectedLesson.Name: students</h2>
     @if (_enrolledStudents is null)
     {
-        @if (_request.Error is null)
+        @if (_error is null)
         {
             <p>Loading students...</p>
         }
         else
         {
-            <button class="btn btn-secondary" @onclick="() => SelectLessonAsync(SelectedLesson)" disabled="@_request.IsBusy">Try again</button>
+            <button class="btn btn-secondary" @onclick="() => SelectLessonAsync(SelectedLesson)" disabled="@_isBusy">Try again</button>
         }
     }
     else
@@ -132,14 +133,14 @@ else
         else
         {
             <label for="student-to-enroll">Student</label>
-            <select id="student-to-enroll" class="form-select mb-3" @bind="_studentToEnroll" disabled="@_request.IsBusy">
+            <select id="student-to-enroll" class="form-select mb-3" @bind="_studentToEnroll" disabled="@_isBusy">
                 <option value="">Select a student</option>
                 @foreach (var student in AvailableStudents)
                 {
                     <option value="@student.NeptunCode">@student.Name</option>
                 }
             </select>
-            <button class="btn btn-primary" @onclick="EnrollAsync" disabled="@(_request.IsBusy || _studentToEnroll is null)">Add student to lesson</button>
+            <button class="btn btn-primary" @onclick="EnrollAsync" disabled="@(_isBusy || _studentToEnroll is null)">Add student to lesson</button>
         }
     }
 }
@@ -151,15 +152,38 @@ else
     private IReadOnlyList<StudentDto>? _enrolledStudents;
     public LessonDto? SelectedLesson;
     private Guid? _studentToEnroll;
-    private readonly RequestState _request = new();
+    private string? _error;
+    private bool _isBusy;
 
     private IEnumerable<StudentDto> AvailableStudents => _students
-        .Where(student => _enrolledStudents is not null &&
-            _enrolledStudents.All(enrolled => enrolled.NeptunCode != student.NeptunCode));
+        .Where(student => _enrolledStudents is not null 
+            && _enrolledStudents.All(enrolled => enrolled.NeptunCode != student.NeptunCode));
 
     protected override Task OnInitializedAsync() => LoadDataAsync();
 
-    private Task LoadDataAsync() => _request.RunAsync(RefreshDataAsync, "Could not load data.");
+    private async Task LoadDataAsync()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _error = null;
+
+        try
+        {
+            await RefreshDataAsync();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            _error = $"Could not load data. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
 
     private async Task RefreshDataAsync()
     {
@@ -167,8 +191,17 @@ else
         _lessons = await Api.GetLessonsAsync();
     }
 
-    private Task AddLessonAsync() =>
-        _request.RunAsync(async () =>
+    private async Task AddLessonAsync()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _error = null;
+
+        try
         {
             await Api.AddLessonAsync(new AddLessonRequest
             {
@@ -179,16 +212,43 @@ else
             });
             _lesson = new LessonForm();
             await RefreshDataAsync();
-        }, "Could not add the lesson or refresh the list.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            _error = $"Could not add the lesson or refresh the list. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
 
-    private Task SelectLessonAsync(LessonDto selected) =>
-        _request.RunAsync(async () =>
+    private async Task SelectLessonAsync(LessonDto selected)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _error = null;
+
+        try
         {
             SelectedLesson = selected;
             _enrolledStudents = null;
             _studentToEnroll = null;
             _enrolledStudents = await Api.GetLessonStudentsAsync(selected.Id);
-        }, "Could not load the lesson's students.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            _error = $"Could not load the lesson's students. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
 
     private Task ChangeLessonAsync(ChangeEventArgs args)
     {
@@ -201,25 +261,36 @@ else
         SelectedLesson = null;
         _enrolledStudents = null;
         _studentToEnroll = null;
-        _request.ClearError();
+        _error = null;
         return Task.CompletedTask;
     }
 
-    private Task EnrollAsync()
+    private async Task EnrollAsync()
     {
-        if (SelectedLesson is null || _studentToEnroll is not Guid studentId)
+        if (_isBusy || SelectedLesson is null || _studentToEnroll is not Guid studentId)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         var lessonId = SelectedLesson.Id;
-        return _request.RunAsync(async () =>
+        _isBusy = true;
+        _error = null;
+
+        try
         {
             _enrolledStudents = null;
             await Api.AssignStudentAsync(lessonId, studentId);
             _studentToEnroll = null;
             _enrolledStudents = await Api.GetLessonStudentsAsync(lessonId);
-        }, "Could not enroll the student or refresh the lesson.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            _error = $"Could not enroll the student or refresh the lesson. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
     }
 
     private sealed class LessonForm

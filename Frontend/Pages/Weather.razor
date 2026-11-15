@@ -1,14 +1,15 @@
 @page "/students"
+@using System.Text.Json
 @inject RegistrationApiClient Api
 
 <PageTitle>Students</PageTitle>
 
 <h1>Students</h1>
 
-@if (request.Error is not null)
+@if (error is not null)
 {
-    <p role="alert">@request.Error</p>
-    <button class="btn btn-primary" @onclick="LoadStudentsAsync">Try again</button>
+    <p role="alert">@error</p>
+    <button class="btn btn-primary" @onclick="LoadStudentsAsync" disabled="@isBusy">Try again</button>
 }
 else if (students is null)
 {
@@ -38,15 +39,37 @@ else
 }
 
 @code {
+
     private IReadOnlyList<StudentDto>? students;
-    private readonly RequestState request = new();
+
+    private string? error;
+
+    private bool isBusy;
 
     protected override Task OnInitializedAsync() => LoadStudentsAsync();
 
-    private Task LoadStudentsAsync() =>
-        request.RunAsync(async () =>
+    private async Task LoadStudentsAsync()
+    {
+        if (isBusy)
         {
-            students = null;
+            return;
+        }
+
+        isBusy = true;
+        error = null;
+        students = null;
+
+        try
+        {
             students = await Api.GetAllStudentsAsync();
-        }, "Could not load students.");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            error = $"Could not load students. {exception.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 }

@@ -1,4 +1,5 @@
 @page "/"
+@using System.Text.Json
 @inject RegistrationApiClient Api
 
 <PageTitle>Student Portal</PageTitle>
@@ -8,52 +9,75 @@
 
 <h2>Add student</h2>
 
-@if (message is not null)
+@if (_message is not null)
 {
-    <p role="status">@message</p>
+    <p role="status">@_message</p>
 }
-@if (request.Error is not null)
+@if (_error is not null)
 {
-    <p role="alert">@request.Error</p>
+    <p role="alert">@_error</p>
 }
 
-<EditForm Model="student" OnValidSubmit="AddStudentAsync">
+<EditForm Model="_student" OnValidSubmit="AddStudentAsync">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
     <div class="mb-3">
         <label for="student-name">Name</label>
-        <InputText id="student-name" class="form-control" @bind-Value="student.Name" />
+        <InputText id="student-name" class="form-control" @bind-Value="_student.Name" />
     </div>
     <div class="mb-3">
         <label for="student-email">Email</label>
-        <InputText id="student-email" type="email" class="form-control" @bind-Value="student.EmailAddress" />
+        <InputText id="student-email" type="email" class="form-control" @bind-Value="_student.EmailAddress" />
     </div>
     <div class="mb-3">
         <label for="student-birth-date">Date of birth</label>
-        <InputDate id="student-birth-date" class="form-control" @bind-Value="student.BirthDate" />
+        <InputDate id="student-birth-date" class="form-control" @bind-Value="_student.BirthDate" />
     </div>
-    <button class="btn btn-primary" type="submit" disabled="@request.IsBusy">Add student</button>
+    <button class="btn btn-primary" type="submit" disabled="@_isBusy">Add student</button>
 </EditForm>
 
 @code {
-    private StudentForm student = new();
-    private string? message;
-    private readonly RequestState request = new();
 
-    private Task AddStudentAsync() =>
-        request.RunAsync(async () =>
+    private StudentForm _student = new();
+
+    private string? _message;
+
+    private string? _error;
+
+    private bool _isBusy;
+
+    private async Task AddStudentAsync()
+    {
+        if (_isBusy)
         {
-            message = null;
+            return;
+        }
+
+        _isBusy = true;
+        _error = null;
+        _message = null;
+
+        try
+        {
             await Api.AddStudentAsync(new AddStudentRequest
             {
-                Name = student.Name,
-                EmailAddress = student.EmailAddress,
-                BirthDate = student.BirthDate
+                Name = _student.Name,
+                EmailAddress = _student.EmailAddress,
+                BirthDate = _student.BirthDate
             });
-            student = new StudentForm();
-            message = "Student added.";
-        }, "Could not add the student.");
+            _student = new StudentForm();
+            _message = "Student added.";
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
+        {
+            _error = $"Could not add the student. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
 
     private sealed class StudentForm
     {
