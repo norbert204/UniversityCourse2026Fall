@@ -1,0 +1,238 @@
+@page "/lessons"
+@inject RegistrationApiClient Api
+
+<PageTitle>Lessons</PageTitle>
+
+<h1>Lessons</h1>
+
+@if (_request.Error is not null)
+{
+    <p role="alert">@_request.Error</p>
+}
+
+<h2>Add lesson</h2>
+<EditForm Model="_lesson" OnValidSubmit="AddLessonAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-3">
+        <label for="lesson-name">Name</label>
+        <InputText id="lesson-name" class="form-control" @bind-Value="_lesson.Name" />
+    </div>
+    <div class="mb-3">
+        <label for="lesson-room">Room</label>
+        <InputText id="lesson-room" class="form-control" @bind-Value="_lesson.Room" />
+    </div>
+    <div class="mb-3">
+        <label for="lesson-start">Starts at</label>
+        <InputDate id="lesson-start" class="form-control" Type="InputDateType.DateTimeLocal" @bind-Value="_lesson.StartsAt" />
+    </div>
+    <div class="mb-3">
+        <label for="lesson-duration">Duration in minutes</label>
+        <InputNumber id="lesson-duration" class="form-control" @bind-Value="_lesson.DurationMinutes" />
+    </div>
+    <button class="btn btn-primary" type="submit" disabled="@_request.IsBusy">Add lesson</button>
+</EditForm>
+
+<h2 class="mt-4">Available lessons</h2>
+@if (_lessons is null)
+{
+    @if (_request.Error is null)
+    {
+        <p>Loading lessons...</p>
+    }
+    else
+    {
+        <button class="btn btn-primary" @onclick="LoadDataAsync" disabled="@_request.IsBusy">Try again</button>
+    }
+}
+else if (_lessons.Count == 0)
+{
+    <p>No lessons yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Name</th><th>Room</th><th>Starts</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _lessons)
+            {
+                <tr @key="item.Id">
+                    <td>@item.Name</td>
+                    <td>@item.Room</td>
+                    <td>@item.StartsAt.ToString("g")</td>
+                    <td><button class="btn btn-secondary" @onclick="() => SelectLessonAsync(item)" disabled="@_request.IsBusy">Manage students</button></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2 class="mt-4">Add students to a lesson</h2>
+@if (_lessons is null)
+{
+    <p>Load the lessons to add students.</p>
+}
+else if (_lessons.Count == 0)
+{
+    <p>Add a lesson first.</p>
+}
+else
+{
+    <label for="lesson-to-manage">Lesson</label>
+    <select id="lesson-to-manage" class="form-select mb-3"
+            value="@(SelectedLesson?.Id.ToString() ?? string.Empty)"
+            @onchange="ChangeLessonAsync" disabled="@_request.IsBusy">
+        <option value="">Select a lesson</option>
+        @foreach (var item in _lessons)
+        {
+            <option value="@item.Id">@item.Name</option>
+        }
+    </select>
+}
+
+@if (SelectedLesson is not null)
+{
+    <h2>@SelectedLesson.Name: students</h2>
+    @if (_enrolledStudents is null)
+    {
+        @if (_request.Error is null)
+        {
+            <p>Loading students...</p>
+        }
+        else
+        {
+            <button class="btn btn-secondary" @onclick="() => SelectLessonAsync(SelectedLesson)" disabled="@_request.IsBusy">Try again</button>
+        }
+    }
+    else
+    {
+        @if (_enrolledStudents.Count == 0)
+        {
+            <p>No students enrolled.</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var student in _enrolledStudents)
+                {
+                    <li @key="student.NeptunCode">@student.Name</li>
+                }
+            </ul>
+        }
+        @if (_students.Count == 0)
+        {
+            <p>Add a student on the Home page first.</p>
+        }
+        else if (!AvailableStudents.Any())
+        {
+            <p>All students are already in this lesson.</p>
+        }
+        else
+        {
+            <label for="student-to-enroll">Student</label>
+            <select id="student-to-enroll" class="form-select mb-3" @bind="_studentToEnroll" disabled="@_request.IsBusy">
+                <option value="">Select a student</option>
+                @foreach (var student in AvailableStudents)
+                {
+                    <option value="@student.NeptunCode">@student.Name</option>
+                }
+            </select>
+            <button class="btn btn-primary" @onclick="EnrollAsync" disabled="@(_request.IsBusy || _studentToEnroll is null)">Add student to lesson</button>
+        }
+    }
+}
+
+@code {
+    private LessonForm _lesson = new();
+    private IReadOnlyList<LessonDto>? _lessons;
+    private IReadOnlyList<StudentDto> _students = [];
+    private IReadOnlyList<StudentDto>? _enrolledStudents;
+    public LessonDto? SelectedLesson;
+    private Guid? _studentToEnroll;
+    private readonly RequestState _request = new();
+
+    private IEnumerable<StudentDto> AvailableStudents => _students
+        .Where(student => _enrolledStudents is not null &&
+            _enrolledStudents.All(enrolled => enrolled.NeptunCode != student.NeptunCode));
+
+    protected override Task OnInitializedAsync() => LoadDataAsync();
+
+    private Task LoadDataAsync() => _request.RunAsync(RefreshDataAsync, "Could not load data.");
+
+    private async Task RefreshDataAsync()
+    {
+        _students = await Api.GetAllStudentsAsync();
+        _lessons = await Api.GetLessonsAsync();
+    }
+
+    private Task AddLessonAsync() =>
+        _request.RunAsync(async () =>
+        {
+            await Api.AddLessonAsync(new AddLessonRequest
+            {
+                Name = _lesson.Name,
+                Room = _lesson.Room,
+                StartsAt = _lesson.StartsAt,
+                DurationMinutes = _lesson.DurationMinutes
+            });
+            _lesson = new LessonForm();
+            await RefreshDataAsync();
+        }, "Could not add the lesson or refresh the list.");
+
+    private Task SelectLessonAsync(LessonDto selected) =>
+        _request.RunAsync(async () =>
+        {
+            SelectedLesson = selected;
+            _enrolledStudents = null;
+            _studentToEnroll = null;
+            _enrolledStudents = await Api.GetLessonStudentsAsync(selected.Id);
+        }, "Could not load the lesson's students.");
+
+    private Task ChangeLessonAsync(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var lessonId) &&
+            _lessons?.FirstOrDefault(item => item.Id == lessonId) is { } selected)
+        {
+            return SelectLessonAsync(selected);
+        }
+
+        SelectedLesson = null;
+        _enrolledStudents = null;
+        _studentToEnroll = null;
+        _request.ClearError();
+        return Task.CompletedTask;
+    }
+
+    private Task EnrollAsync()
+    {
+        if (SelectedLesson is null || _studentToEnroll is not Guid studentId)
+        {
+            return Task.CompletedTask;
+        }
+
+        var lessonId = SelectedLesson.Id;
+        return _request.RunAsync(async () =>
+        {
+            _enrolledStudents = null;
+            await Api.AssignStudentAsync(lessonId, studentId);
+            _studentToEnroll = null;
+            _enrolledStudents = await Api.GetLessonStudentsAsync(lessonId);
+        }, "Could not enroll the student or refresh the lesson.");
+    }
+
+    private sealed class LessonForm
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        public string Room { get; set; } = string.Empty;
+
+        public DateTime StartsAt { get; set; } = DateTime.Now.Date.AddDays(7).AddHours(9);
+
+        [Range(1, 1440)]
+        public int DurationMinutes { get; set; } = 60;
+    }
+}

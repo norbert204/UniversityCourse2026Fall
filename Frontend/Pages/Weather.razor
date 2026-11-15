@@ -1,0 +1,52 @@
+@page "/students"
+@inject RegistrationApiClient Api
+
+<PageTitle>Students</PageTitle>
+
+<h1>Students</h1>
+
+@if (request.Error is not null)
+{
+    <p role="alert">@request.Error</p>
+    <button class="btn btn-primary" @onclick="LoadStudentsAsync">Try again</button>
+}
+else if (students is null)
+{
+    <p>Loading students...</p>
+}
+else if (students.Count == 0)
+{
+    <p>No students yet.</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr><th>Name</th><th>Neptun code</th><th>Email</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var student in students)
+            {
+                <tr @key="student.NeptunCode">
+                    <td>@student.Name</td>
+                    <td>@student.NeptunCode</td>
+                    <td>@student.EmailAddress</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private IReadOnlyList<StudentDto>? students;
+    private readonly RequestState request = new();
+
+    protected override Task OnInitializedAsync() => LoadStudentsAsync();
+
+    private Task LoadStudentsAsync() =>
+        request.RunAsync(async () =>
+        {
+            students = null;
+            students = await Api.GetAllStudentsAsync();
+        }, "Could not load students.");
+}

@@ -24,20 +24,31 @@ builder.Services.AddScoped<ILessonService, LessonService>();
 
 builder.Services.AddTransient<RandomService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5261", "https://localhost:7060");
+        policy.AllowAnyHeader();
+        policy.AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
+app.UseExceptionHandler("/error");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors("BlazorApp");
 }
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseAuthorization();
-
-app.UseExceptionHandler("/error");
 
 app.MapControllers();
 
