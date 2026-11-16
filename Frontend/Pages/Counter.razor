@@ -83,7 +83,7 @@ else
 {
     <label for="lesson-to-manage">Lesson</label>
     <select id="lesson-to-manage" class="form-select mb-3"
-            value="@(SelectedLesson?.Id.ToString() ?? string.Empty)"
+            value="@(_selectedLesson?.Id.ToString() ?? string.Empty)"
             @onchange="ChangeLessonAsync" disabled="@_isBusy">
         <option value="">Select a lesson</option>
         @foreach (var item in _lessons)
@@ -93,9 +93,9 @@ else
     </select>
 }
 
-@if (SelectedLesson is not null)
+@if (_selectedLesson is not null)
 {
-    <h2>@SelectedLesson.Name: students</h2>
+    <h2>@_selectedLesson.Name: students</h2>
     @if (_enrolledStudents is null)
     {
         @if (_error is null)
@@ -104,7 +104,7 @@ else
         }
         else
         {
-            <button class="btn btn-secondary" @onclick="() => SelectLessonAsync(SelectedLesson)" disabled="@_isBusy">Try again</button>
+            <button class="btn btn-secondary" @onclick="() => SelectLessonAsync(_selectedLesson)" disabled="@_isBusy">Try again</button>
         }
     }
     else
@@ -150,7 +150,7 @@ else
     private IReadOnlyList<LessonDto>? _lessons;
     private IReadOnlyList<StudentDto> _students = [];
     private IReadOnlyList<StudentDto>? _enrolledStudents;
-    public LessonDto? SelectedLesson;
+    private LessonDto? _selectedLesson;
     private Guid? _studentToEnroll;
     private string? _error;
     private bool _isBusy;
@@ -235,7 +235,7 @@ else
 
         try
         {
-            SelectedLesson = selected;
+            _selectedLesson = selected;
             _enrolledStudents = null;
             _studentToEnroll = null;
             _enrolledStudents = await Api.GetLessonStudentsAsync(selected.Id);
@@ -252,13 +252,17 @@ else
 
     private Task ChangeLessonAsync(ChangeEventArgs args)
     {
-        if (Guid.TryParse(args.Value?.ToString(), out var lessonId) &&
-            _lessons?.FirstOrDefault(item => item.Id == lessonId) is { } selected)
+        if (Guid.TryParse(args.Value?.ToString(), out var lessonId))
         {
-            return SelectLessonAsync(selected);
+            var selectedLesson = _lessons?.FirstOrDefault(item => item.Id == lessonId);
+
+            if (selectedLesson is not null)
+            {
+                return SelectLessonAsync(selectedLesson);   
+            }
         }
 
-        SelectedLesson = null;
+        _selectedLesson = null;
         _enrolledStudents = null;
         _studentToEnroll = null;
         _error = null;
@@ -267,12 +271,14 @@ else
 
     private async Task EnrollAsync()
     {
-        if (_isBusy || SelectedLesson is null || _studentToEnroll is not Guid studentId)
+        if (_isBusy || _selectedLesson is null || _studentToEnroll is null)
         {
             return;
         }
 
-        var lessonId = SelectedLesson.Id;
+        var lessonId = _selectedLesson.Id;
+        var studentId = _studentToEnroll.Value;
+
         _isBusy = true;
         _error = null;
 

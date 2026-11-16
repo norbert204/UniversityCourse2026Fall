@@ -1,75 +1,107 @@
 @page "/students"
 @using System.Text.Json
 @inject RegistrationApiClient Api
+@inject Microsoft.JSInterop.IJSRuntime JS
 
 <PageTitle>Students</PageTitle>
 
 <h1>Students</h1>
 
-@if (error is not null)
+@if (_error is not null)
 {
-    <p role="alert">@error</p>
-    <button class="btn btn-primary" @onclick="LoadStudentsAsync" disabled="@isBusy">Try again</button>
+    <p role="alert">@_error</p>
+    <button class="btn btn-primary" @onclick="LoadStudentsAsync" disabled="@_isBusy">Try again</button>
 }
-else if (students is null)
+
+@if (_students is null && _error is null)
 {
     <p>Loading students...</p>
 }
-else if (students.Count == 0)
+else if (_students is { Count: 0 })
 {
     <p>No students yet.</p>
 }
-else
+else if (_students is not null)
 {
-    <table class="table">
-        <thead>
-            <tr><th>Name</th><th>Neptun code</th><th>Email</th></tr>
-        </thead>
-        <tbody>
-            @foreach (var student in students)
-            {
-                <tr @key="student.NeptunCode">
-                    <td>@student.Name</td>
-                    <td>@student.NeptunCode</td>
-                    <td>@student.EmailAddress</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr><th>Name</th><th>Neptun code</th><th>Email</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var student in _students)
+                {
+                    <tr @key="student.NeptunCode">
+                        <td>@student.Name</td>
+                        <td>@student.NeptunCode</td>
+                        <td>@student.EmailAddress</td>
+                        <td>
+                            <button class="btn btn-link text-danger p-0" type="button" @onclick="() => DeleteStudentAsync(student)" disabled="@_isBusy">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 @code {
 
-    private IReadOnlyList<StudentDto>? students;
+    private IReadOnlyList<StudentDto>? _students;
 
-    private string? error;
+    private string? _error;
 
-    private bool isBusy;
+    private bool _isBusy;
 
     protected override Task OnInitializedAsync() => LoadStudentsAsync();
 
     private async Task LoadStudentsAsync()
     {
-        if (isBusy)
+        if (_isBusy)
         {
             return;
         }
 
-        isBusy = true;
-        error = null;
-        students = null;
+        _isBusy = true;
+        _error = null;
+        _students = null;
 
         try
         {
-            students = await Api.GetAllStudentsAsync();
+            _students = await Api.GetAllStudentsAsync();
         }
         catch (Exception exception) when (exception is HttpRequestException or JsonException or InvalidDataException)
         {
-            error = $"Could not load students. {exception.Message}";
+            _error = $"Could not load students. {exception.Message}";
         }
         finally
         {
-            isBusy = false;
+            _isBusy = false;
+        }
+    }
+
+    private async Task DeleteStudentAsync(StudentDto studentToDelete)
+    {
+        if (_isBusy || _students is null)
+        {
+            return;
+        }
+
+        _isBusy = true;
+
+        try
+        {
+            _error = null;
+            await Api.DeleteStudentAsync(studentToDelete.NeptunCode);
+            _students = _students.Where(student => student.NeptunCode != studentToDelete.NeptunCode).ToArray();
+        }
+        catch (HttpRequestException exception)
+        {
+            _error = $"Could not delete the student. {exception.Message}";
+        }
+        finally
+        {
+            _isBusy = false;
         }
     }
 }
